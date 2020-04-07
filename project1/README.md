@@ -22,19 +22,19 @@ This file contains most of the parameters used for running the code.
 
 ## Running the code
 If you are running the code for the first time, create the datasets used for training and testing by running
-'''
+```
 python make_tfrecords.py
-'''
+```
 This will create a ./data folder with a variety of .tfrecords files containing all the input stimuli for the network during training, validation and testing.
 
 Next, run
-'''
+```
 python capser_main.py
-''
+```
 This will train and test the selected number of networks (default: 10).
 By default, this will also automatically initiate the get_reconstructions.py code to create plots containing the exemplary reconstructions of the input images during testing as included in the paper.
 
 In order to create the final performance plots averaged over all networks, run
-'''
+```
 python plot_final_performance.py
-'''
+```
