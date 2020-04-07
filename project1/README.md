@@ -17,7 +17,7 @@ This code was tested with the following modules/packages. It is not ensured that
 * Skimage 0.13.1
 * Skimage 0.14.0
 
-## The parameters.py file
+## parameters.py
 This file contains most of the parameters used for running the code. It is recommended to get familiar and check the parameters (such as the data paths, the stimulus parameters, and the network parameters) before executing the code.
 
 ## Running the code
