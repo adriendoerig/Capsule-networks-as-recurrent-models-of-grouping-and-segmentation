@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
 """
+Capsule Networks as Recurrent Models of Grouping and Segmentation
+
 Experiment 2: The role of recurrent processing
 
-Exemplary parameters file used to get the data presented in our paper
+Parameters file used to get the data presented in our paper
 @author: Lynn Schmittwilken
 """
 
@@ -15,10 +16,11 @@ flags = tf.app.flags
 ###########################
 #          Paths          #
 ###########################
-# General:
+# General data paths for logs:
 data_path = './data'
 MODEL_NAME = '_logs_1'
 flags.DEFINE_string('data_path', data_path, 'path where all data files are located')
+flags.DEFINE_string('logdir', data_path + '/' + MODEL_NAME + '/', 'save the model results here')
 
 # Training data set involving all shape defined in shape_types:
 flags.DEFINE_string('train_data_path', data_path+'/train.tfrecords', 'path for tfrecords with training set')
@@ -53,8 +55,6 @@ flags.DEFINE_list('test_crowding_data_paths',
                    data_path+'/test_crowding_shuffled_cuboids'
                    ], 'path for tfrecords with test crowding set')
 
-flags.DEFINE_string('logdir', data_path + '/' + MODEL_NAME + '/', 'save the model results here')
-
 
 ###########################
 #     Reproducibility     #
@@ -68,9 +68,11 @@ flags.DEFINE_integer('random_seed', None, 'if not None, set seed for weights ini
 # IMPORTANT:
     # After changing any of the following stimulus parameters, you need to
     # recreate the datasets
+flags.DEFINE_string('train_procedure', 'random', 'only random is possible')
 flags.DEFINE_boolean('reduce_df', True,  'if true, the degrees of freedom for position on the x axis get adapted')
-flags.DEFINE_integer('n_train_samples', 100000, 'number of samples in the training set')
+flags.DEFINE_integer('n_train_samples', 240000, 'number of samples in the training set')
 flags.DEFINE_integer('n_test_samples', 2400, 'number of samples in the test set')
+flags.DEFINE_integer('n_idx', 2, 'number of test conditions')
 
 im_size = [16, 48]
 flags.DEFINE_list('im_size', im_size, 'image size of datasets')
@@ -78,7 +80,6 @@ flags.DEFINE_integer('im_depth', 1, 'number of colour channels')
 flags.DEFINE_list('shape_size', [14, 11, 6], 'size of the shapes')
 flags.DEFINE_integer('bar_width', 1, 'thickness of shape lines')
 flags.DEFINE_integer('offset', 1, 'offset between shapes and vernier offset width')
-flags.DEFINE_integer('n_idx', 3, 'number of test conditions used (max. 3)')
 
 # Define which shapes should be used during training and testing.
 # For this, have a look at the corresponding shapes in batchmaker.py
@@ -109,7 +110,7 @@ flags.DEFINE_list('delta_contrast', [0.9, 1.1], 'min and max factor to adjust co
 ###########################
 #   Network parameters    #
 ###########################
-# Conv and primary caps:
+# Conv and primary caps parameters:
 caps1_nmaps = len(shape_types)
 caps1_ndims = 1
 
@@ -175,11 +176,13 @@ flags.DEFINE_float('init_sigma', 0.01, 'stddev for W initializer')
 ###########################
 flags.DEFINE_boolean('decode_reconstruction', True, 'decode the reconstruction and use reconstruction loss')
 
+
 # Control magnitude of losses
 flags.DEFINE_float('alpha_vernieroffset', 1., 'alpha for vernieroffset loss')
 flags.DEFINE_float('alpha_margin', 0.5, 'alpha for margin loss')
 flags.DEFINE_float('alpha_shape_1_reconstruction', 0.0005, 'alpha for reconstruction loss for vernier image (reduce_sum)')
 flags.DEFINE_float('alpha_shape_2_reconstruction', 0.0001, 'alpha for reconstruction loss for shape image (reduce_sum)')
+
 
 # Margin loss extras
 flags.DEFINE_float('m_plus', 0.9, 'the parameter of m plus')
@@ -190,8 +193,7 @@ flags.DEFINE_float('lambda_val', 0.5, 'down weight of the loss for absent digit 
 ###########################
 #     Regularization       #
 ###########################
-
-flags.DEFINE_boolean('dropout', True, 'use dropout after conv layers 1&2')
+flags.DEFINE_boolean('dropout', False, 'use dropout after conv layers 1&2')
 flags.DEFINE_boolean('batch_norm_conv', False, 'use batch normalization between every conv layer')
 flags.DEFINE_boolean('batch_norm_reconstruction', False, 'use batch normalization for the reconstruction decoder layers')
 flags.DEFINE_boolean('batch_norm_vernieroffset', False, 'use batch normalization for the vernieroffset loss layer')
