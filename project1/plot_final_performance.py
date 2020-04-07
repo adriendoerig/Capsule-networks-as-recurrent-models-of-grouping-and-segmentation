@@ -10,17 +10,16 @@ Create the final performance plots
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
-
 from parameters import parameters
 
+
 print('-------------------------------------------------------')
-print('TF version:', tf.__version__)
 print('Starting script...')
-print('Chosen training procedure:', parameters.train_procedure)
 print('-------------------------------------------------------')
 
-
+###########################
+#      Preparations:      #
+###########################
 def plot_uncrowding_results(results, error, parameters, save=None):
     '''
     Visualize the final results of the network's vernier discrimation performance
@@ -107,7 +106,7 @@ error_diff_results = np.squeeze(np.std(diff_results, 1)) * 100 / np.sqrt(n_itera
 
 
 # Create and save the final performance figure:
-performance_png_file = parameters.logdir + '/performance_plots.png'
+performance_png_file = parameters.logdir + '/final_performance.png'
 plot_uncrowding_results(mean_diff_results, error_diff_results, performance_png_file)
 
 print('... Finished creation of /performance_plots.png')

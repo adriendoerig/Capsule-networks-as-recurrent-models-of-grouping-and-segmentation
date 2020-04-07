@@ -245,7 +245,7 @@ for idx_execution in range(n_iterations):
             results3 = [p['decoder_output_img3'] for p in capser_out]
             
             # Plot and save the reconstruction images
-            img_path = log_dir + '/uncrowding'
+            img_path = log_dir + '/reconstructions'
             img_file = img_path + '/' + category[21:] + str(stim_idx) + '.png'
             if not os.path.exists(img_path):
                 os.mkdir(img_path)

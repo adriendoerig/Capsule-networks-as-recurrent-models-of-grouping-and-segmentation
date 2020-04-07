@@ -48,7 +48,7 @@ def save_params(save_path, parameters):
                          'Delete or enter a different log_path in parameters.py'
                          % txt_file)
     else:
-        with open(save_path + '/parameters.txt', 'w') as f_txt:
+        with open(txt_file, 'w') as f_txt:
             f_py = open('./parameters.py')
             variables = f_py.read()
             f_txt.write(variables)
@@ -696,10 +696,7 @@ def compute_vernieroffset_loss(shape_1_caps_activation, vernierlabels, parameter
     '''
     with tf.name_scope('compute_vernieroffset_loss'):
         # Depth of decoder fc-layer:
-        if parameters.train_procedure=='vernier_shape':
-            depth = 2
-        else:
-            depth = 3
+        depth = 3
         
         shape_1_caps_activation = tf.squeeze(shape_1_caps_activation, [1, 2, -1])
         vernierlabels = tf.squeeze(vernierlabels)
