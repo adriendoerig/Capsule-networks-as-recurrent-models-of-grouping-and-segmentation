@@ -18,7 +18,7 @@ This code was tested with the following modules/packages. It is not ensured that
 * Skimage 0.14.0
 
 ## The parameters.py file
-This file contains most of the parameters used for running the code.
+This file contains most of the parameters used for running the code. It is recommended to get familiar and check the parameters (such as the data paths, the stimulus parameters, and the network parameters) before executing the code.
 
 ## Running the code
 If you are running the code for the first time, create the datasets used for training and testing by running
@@ -38,3 +38,6 @@ In order to create the final performance plots averaged over all networks, run
 ```
 python plot_final_performance.py
 ```
+
+## Acknowledgements
+We would like to thank Lynn Schmittwilken ([Link](l.schmittwilken@tu-berlin.de)) for the creation and execution of the code.
