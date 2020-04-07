@@ -37,7 +37,7 @@ python get_reconstructions.py
 ```
 The reconstructions will be saved in *./data/_logs_1/network_ID/reconstructions* (e.g. *./data/_logs_1/0/reconstructions*).
 
-In order to create the final performance plot (*final_performance.png*) averaged over all networks, run
+In order to create the final performance plot (*./data/_logs_1/final_performance.png*) averaged over all networks, run
 ```
 python plot_final_performance.py
 ```
