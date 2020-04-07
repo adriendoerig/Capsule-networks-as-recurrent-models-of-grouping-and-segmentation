@@ -29,13 +29,13 @@ Next, run
 ```
 python capser_main.py
 ```
-This will train and test the selected number of networks (default: 50). By default, all output files will be saved in *./data/_logs_1*. After executing the code, this logdir contains the final results (means and errors) averaged over all trained networks, a *.txt* copy of the *parameters.py*, as well as the individual network outputs in the folders *./data/_logs_1/0* to *./data/_logs_1/9* that each contain network outputs and individual performances for each routing iteration (e.g. *./data/_logs_1/0/iter_routing_1*).
+This will train and test the selected number of networks (default: 50). By default, all output files will be saved in *./data/_logs_1*. After executing the code, this logdir contains the final results (means and errors) averaged over all trained networks, a *.txt* copy of the *parameters.py*, as well as the individual network outputs in the folders *./data/_logs_1/0* to *./data/_logs_1/49* that each contain network outputs and individual performances for each routing iteration (e.g. *./data/_logs_1/0/iter_routing_1*).
 
 In order to create the final performance plots for the model averaged over all networks (*./data/_logs_1/final_performance_model.png*) as well as the performance plots based on the human experiment (*./data/_logs_1/final_performance_humans.png*), run
 ```
 python plot_final_performance.py
 ```
-The code will also perform a statistical analysis comparing the distribution of performances over time/routing iterations (more precisely: the performance slope) between the different configurations (lines vs. cuboids).
+The code will also perform a statistical analysis comparing the distribution of performances over time/routing iterations (more precisely: the performance slopes) between the different configurations (lines vs. cuboids).
 
 ## Acknowledgements
 We would like to thank Lynn Schmittwilken (l.schmittwilken@tu-berlin.de) for the creation and execution of the code.
