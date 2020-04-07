@@ -1,5 +1,6 @@
-# -*- coding: utf-8 -*-
 """
+Capsule Networks as Recurrent Models of Grouping and Segmentation
+
 Experiment 1: Crowding and Uncrowding Naturally Occur in CapsNets
 
 This input function is used for the Estimator API of tensorflow
@@ -20,7 +21,8 @@ from parameters import parameters
 ########################################
 def parse_tfrecords_train(serialized_data):
     with tf.name_scope('Parsing_trainset'):
-        # Define a dict with the data-names and types expected in the TFRecords file.
+        # Define a dict with the data-names and types we expect to find in the
+        # TFRecords file.
         features = {'shape_1_images': tf.FixedLenFeature([], tf.string),
                     'shape_2_images': tf.FixedLenFeature([], tf.string),
                     'shapelabels': tf.FixedLenFeature([], tf.string),
@@ -51,6 +53,7 @@ def parse_tfrecords_train(serialized_data):
         
         nshapeslabels = parsed_data['nshapeslabels']
         nshapeslabels = tf.decode_raw(nshapeslabels, tf.float32)
+        nshapeslabels = tf.cast(nshapeslabels, tf.int64)
         
         nshapeslabels_idx = parsed_data['nshapeslabels_idx']
         nshapeslabels_idx = tf.decode_raw(nshapeslabels_idx, tf.float32)
@@ -58,18 +61,23 @@ def parse_tfrecords_train(serialized_data):
         
         vernierlabels = parsed_data['vernierlabels']
         vernierlabels = tf.decode_raw(vernierlabels, tf.float32)
+        vernierlabels = tf.cast(vernierlabels, tf.int64)
         
         x_shape_1 = parsed_data['x_shape_1']
         x_shape_1 = tf.decode_raw(x_shape_1, tf.float32)
+        x_shape_1 = tf.cast(x_shape_1, tf.int64)
         
         y_shape_1 = parsed_data['y_shape_1']
         y_shape_1 = tf.decode_raw(y_shape_1, tf.float32)
+        y_shape_1 = tf.cast(y_shape_1, tf.int64)
         
         x_shape_2 = parsed_data['x_shape_2']
         x_shape_2 = tf.decode_raw(x_shape_2, tf.float32)
+        x_shape_2 = tf.cast(x_shape_2, tf.int64)
         
         y_shape_2 = parsed_data['y_shape_2']
         y_shape_2 = tf.decode_raw(y_shape_2, tf.float32)
+        y_shape_2 = tf.cast(y_shape_2, tf.int64)
 
         # Reshaping:
         shape_1_images = tf.reshape(shape_1_images, [parameters.im_size[0], parameters.im_size[1], parameters.im_depth])
@@ -84,8 +92,7 @@ def parse_tfrecords_train(serialized_data):
         y_shape_2 = tf.reshape(y_shape_2, [1])
         
         if parameters.train_procedure=='random':
-            # For the random condition, we still want to add a noise image, so
-            # the input is comparable to the other two conditions
+            # For the random condition, we only add a noise image
             shape_2_images = tf.zeros([parameters.im_size[0], parameters.im_size[1], parameters.im_depth], tf.float32)
 
 
@@ -93,7 +100,7 @@ def parse_tfrecords_train(serialized_data):
     #       Data augmentation:       #
     ##################################
     with tf.name_scope('Data_augmentation_trainset'):
-        # Add some random gaussian TRAINING noise (always):
+        # Add some random gaussian TRAINING noise
         noise1 = tf.random_uniform([1], parameters.train_noise[0], parameters.train_noise[1], tf.float32)
         noise2 = tf.random_uniform([1], parameters.train_noise[0], parameters.train_noise[1], tf.float32)
         shape_1_images = tf.add(shape_1_images, tf.random_normal(
@@ -125,89 +132,10 @@ def parse_tfrecords_train(serialized_data):
         if parameters.allow_contrast_augmentation:
             pred = tf.less(tf.random_uniform(shape=[], minval=0., maxval=1., dtype=tf.float32), 0.5)
             shape_1_images, shape_2_images = tf.cond(pred, bright_contrast, contrast_bright)
-    
-        # How the flipping is done:
-        # - change vernierlabels: ceil(abs( (vernierlabels * vernierlabels/2) - 0.5) )
-        # - change shape coordinates / vernier coordinates:
-        #       - x: im_size[1] - (x + nshapes*shapesize)
-        #       - y: im_size[0] - (y + shapesize)
-    
-        # no flipping function:
-        def flip0():
-            shape_1_images_flipped = shape_1_images
-            shape_2_images_flipped = shape_2_images
-            vernierlabels_flipped = vernierlabels
-            x_shape_1_flipped = x_shape_1
-            y_shape_1_flipped = y_shape_1
-            x_shape_2_flipped = x_shape_2
-            y_shape_2_flipped = y_shape_2
-            return [shape_1_images_flipped, shape_2_images_flipped, vernierlabels_flipped,
-                    x_shape_1_flipped, y_shape_1_flipped, x_shape_2_flipped, y_shape_2_flipped]
-    
-        # flip left-right function:
-        def flip1():
-            shape_1_images_flipped = tf.image.flip_left_right(shape_1_images)
-            shape_2_images_flipped = tf.image.flip_left_right(shape_2_images)      
-            vernierlabels_flipped = tf.ceil(tf.abs(tf.subtract(tf.multiply(vernierlabels, tf.divide(vernierlabels, 2.)), 0.5)))
-            if parameters.im_size[1] % 2 == 0:
-                x_shape_1_flipped = tf.subtract(tf.constant(parameters.im_size[1], tf.float32),
-                                                tf.add(x_shape_1, 
-                                                tf.multiply(nshapeslabels[0], tf.constant(parameters.shape_size, tf.float32))))
-                x_shape_2_flipped = tf.subtract(tf.constant(parameters.im_size[1], tf.float32), 
-                                                tf.add(x_shape_2,
-                                                tf.multiply(nshapeslabels[1], tf.constant(parameters.shape_size, tf.float32))))
-            else:
-                x_shape_1_flipped = tf.subtract(tf.constant(parameters.im_size[1]-1, tf.float32),
-                                                tf.add(x_shape_1, 
-                                                tf.multiply(nshapeslabels[0], tf.constant(parameters.shape_size, tf.float32))))
-                x_shape_2_flipped = tf.subtract(tf.constant(parameters.im_size[1]-1, tf.float32), 
-                                                tf.add(x_shape_2,
-                                                tf.multiply(nshapeslabels[1], tf.constant(parameters.shape_size, tf.float32))))
-            y_shape_1_flipped = y_shape_1
-            y_shape_2_flipped = y_shape_2
-            return [shape_1_images_flipped, shape_2_images_flipped, vernierlabels_flipped,
-                    x_shape_1_flipped, y_shape_1_flipped, x_shape_2_flipped, y_shape_2_flipped]
-    
-        # flip up-down function:
-        def flip2():
-            shape_1_images_flipped = tf.image.flip_up_down(shape_1_images)
-            shape_2_images_flipped = tf.image.flip_up_down(shape_2_images)
-            vernierlabels_flipped = tf.ceil(tf.abs(tf.subtract(tf.multiply(vernierlabels, tf.divide(vernierlabels, 2)), 0.5)))
-            x_shape_1_flipped = x_shape_1
-            y_shape_1_flipped = tf.subtract(tf.constant(parameters.im_size[0], tf.float32), tf.add(y_shape_1, parameters.shape_size))
-            x_shape_2_flipped = x_shape_2
-            y_shape_2_flipped = tf.subtract(tf.constant(parameters.im_size[0], tf.float32), tf.add(y_shape_2, parameters.shape_size))
-            return [shape_1_images_flipped, shape_2_images_flipped, vernierlabels_flipped,
-                    x_shape_1_flipped, y_shape_1_flipped, x_shape_2_flipped, y_shape_2_flipped]
-        
-        if parameters.allow_flip_augmentation:
-            # tf flip functions need 4D inputs:
-            shape_1_images = tf.expand_dims(shape_1_images, 0)
-            shape_2_images = tf.expand_dims(shape_2_images, 0)
-        
-            # Maybe flip left-right:
-            pred_flip1 = tf.less(tf.random_uniform(shape=[], minval=0., maxval=1., dtype=tf.float32), 0.5)
-            shape_1_images, shape_2_images, vernierlabels, x_shape_1, y_shape_1, x_shape_2, y_shape_2 = tf.cond(pred_flip1, flip0, flip1)
             
-            # Maybe flip up-down:
-            pred_flip2 = tf.less(tf.random_uniform(shape=[], minval=0., maxval=1., dtype=tf.float32), 0.5)
-            shape_1_images, shape_2_images, vernierlabels, x_shape_1, y_shape_1, x_shape_2, y_shape_2 = tf.cond(pred_flip2, flip0, flip2)
-            
-            # Get rid of extra-dimension:
-            shape_1_images = tf.squeeze(shape_1_images, axis=0)
-            shape_2_images = tf.squeeze(shape_2_images, axis=0)
-        
         # Clip the pixel values
         shape_1_images = tf.clip_by_value(shape_1_images, parameters.clip_values[0], parameters.clip_values[1])
         shape_2_images = tf.clip_by_value(shape_2_images, parameters.clip_values[0], parameters.clip_values[1])
-        
-        # Flipping calculations require these labels as float32, but we need int64
-        vernierlabels = tf.cast(vernierlabels, tf.int64)
-        nshapeslabels = tf.cast(nshapeslabels, tf.int64)
-        x_shape_1 = tf.cast(x_shape_1, tf.int64)
-        y_shape_1 = tf.cast(y_shape_1, tf.int64)
-        x_shape_2 = tf.cast(x_shape_2, tf.int64)
-        y_shape_2 = tf.cast(y_shape_2, tf.int64)
 
     return [shape_1_images, shape_2_images, shapelabels, nshapeslabels_idx, vernierlabels,
             x_shape_1, y_shape_1, x_shape_2, y_shape_2]
@@ -218,7 +146,8 @@ def parse_tfrecords_train(serialized_data):
 ########################################
 def parse_tfrecords_test(serialized_data):
     with tf.name_scope('Parsing_testset'):
-        # Define a dict with the data-names and types we expect to find in the TFRecords file.
+        # Define a dict with the data-names and types we expect to find in the
+        # TFRecords file.
         features = {'shape_1_images': tf.FixedLenFeature([], tf.string),
                     'shape_2_images': tf.FixedLenFeature([], tf.string),
                     'shapelabels': tf.FixedLenFeature([], tf.string),
@@ -286,8 +215,7 @@ def parse_tfrecords_test(serialized_data):
         x_shape_2 = tf.reshape(x_shape_2, [1])
         y_shape_2 = tf.reshape(y_shape_2, [1])
     
-        # For the test and validation set, we dont really need data augmentation,
-        # but we'd still like some TEST noise
+        # For the test set, we only add noise
         noise1 = tf.random_uniform([1], parameters.test_noise[0], parameters.test_noise[1], tf.float32)
         noise2 = tf.random_uniform([1], parameters.test_noise[0], parameters.test_noise[1], tf.float32)
         shape_1_images = tf.add(shape_1_images, tf.random_normal(
@@ -297,7 +225,7 @@ def parse_tfrecords_test(serialized_data):
                 shape=[parameters.im_size[0], parameters.im_size[1], parameters.im_depth], mean=0.0,
                 stddev=noise2))
         
-        # Clip the pixel values
+        # Clip pixel values
         shape_1_images = tf.clip_by_value(shape_1_images, parameters.clip_values[0], parameters.clip_values[1])
         shape_2_images = tf.clip_by_value(shape_2_images, parameters.clip_values[0], parameters.clip_values[1])
     
@@ -309,11 +237,10 @@ def parse_tfrecords_test(serialized_data):
 #     Input function:     #
 ###########################
 def input_fn(filenames, stage, parameters, buffer_size=1024):
-    # Create a TensorFlow dataset object:
+    # Create a TensorFlow Dataset-object:
     dataset = tf.data.TFRecordDataset(filenames=filenames, num_parallel_reads=32)
     
-    # Depending on whether we use the train or test set, different parsing functions
-    # are used:
+    # We use two differnt parsing functions for train and testing
     if stage=='train' or stage=='eval':
         dataset = dataset.map(parse_tfrecords_train, num_parallel_calls=64)
         
@@ -326,7 +253,7 @@ def input_fn(filenames, stage, parameters, buffer_size=1024):
     else:
         dataset = dataset.map(parse_tfrecords_test, num_parallel_calls=64)
         
-        # Don't shuffle the data and only go through it once:
+        # Don't shuffle the data and only go through the it once:
         num_repeat = 1
         
     # Repeat the dataset the given number of times and get a batch of data
@@ -369,6 +296,7 @@ def input_fn(filenames, stage, parameters, buffer_size=1024):
                      'mask_with_labels': False,
                      'is_training': False}
     return feed_dict, shapelabels
+
 
 
 ##############################

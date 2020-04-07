@@ -1,5 +1,6 @@
-# -*- coding: utf-8 -*-
 """
+Capsule Networks as Recurrent Models of Grouping and Segmentation
+
 Experiment 1: Crowding and Uncrowding Naturally Occur in CapsNets
 
 This script creates tfrecords files based on the stim_maker_fn class
@@ -7,7 +8,7 @@ This script creates tfrecords files based on the stim_maker_fn class
 The tfrecords files are called in the input_fn of the Estimator API
 (see capser_input_fn.py).
 
-This code is inspired by the following youtube-video and code. Have a look if
+This code is inspired by the following Youtube-video and code. Have a look if
 you want to understand the details.
 https://www.youtube.com/watch?v=oxrcZ9uUblI
 https://github.com/Hvass-Labs/TensorFlow-Tutorials/blob/master/18_TFRecords_Dataset_API.ipynb
@@ -26,13 +27,12 @@ from batchmaker import stim_maker_fn
 ##################################
 #       Extra parameters:        #
 ##################################
-# Choose which datasets should be created
 training = 1
-testing = 1           # Same as training; can be used for evaluation
-testing_crowding = 1  # Relevant test set
+testing = 1
+testing_crowding = 1
 
-# Choose how many conditions should be included (max. 4)
-n_idx = 4
+# How many test conditions will be used?
+n_idx = parameters.n_idx
 
 
 ##################################
@@ -58,7 +58,8 @@ def print_progress(count, total):
 #      tfrecords function:       #
 ##################################
 def make_tfrecords(out_path, stim_maker, state, shape_types, n_shapes, n_samples,
-                   stim_idx=None, reduce_df=False):
+                   train_procedure='vernier_shape', overlap=True, stim_idx=None,
+                   centralize=False, reduce_df=False):
     '''
     Function to create tfrecord files based on stim_maker class
     
@@ -80,6 +81,23 @@ def make_tfrecords(out_path, stim_maker, state, shape_types, n_shapes, n_samples
               Pass a list with all possible shape repetitions
     n_samples: int
                Full sample size of dataset
+    train_procedure: string
+                     This input can be used to change the actual training input
+                     of the network. To recapitulate the paper results, the
+                     only training procedure that is needed is called 'random'.
+                     If 'random', the network will receive an input
+                     comprised of a single shape type which is in 50% of the cases
+                     a vernier, and in the other 50% a random other group of
+                     shapes (e.g. three squares). For this, shape_2_images will
+                     be replaced by a noise image in the capser_input_fn.
+                     If 'random_random', the network will receive an input
+                     comprised of two shape types involving a vernier plus a
+                     random group of shapes in 50% of the cases, or else two
+                     random groups of shapes. If 'vernier_shape', the network
+                     will receive an input which is always comprised of a vernier
+                     and a random group of shapes. The default is 'random'.
+    overlap: bool
+             If true, allow overlap between shape_1 and shape_2
     stim_idx: int
               Based on the stim_idx, a test condition can be chosen. If
               stim_idx=None, a random condition is used. If stim_idx=0 the
@@ -89,6 +107,8 @@ def make_tfrecords(out_path, stim_maker, state, shape_types, n_shapes, n_samples
               using flankers of one or two different types); if stim_idx=3 the
               control condition is chosen (no-crowding condition due to
               sufficient spacing between flankers and vernier)
+    centralize: bool
+                Place shapes right in the center of the image
     reduce_df: reduce_df: bool
                If reduce_df=False the stimulus group is placed randomly within
                the image. If reduce_df=True the stimulus group is still randomly
@@ -104,7 +124,7 @@ def make_tfrecords(out_path, stim_maker, state, shape_types, n_shapes, n_samples
     # Open a TFRecordWriter for the output-file.
     with tf.python_io.TFRecordWriter(out_path) as writer:
 
-        # Create images one by one using stimMaker and save them
+        # Create images one by one using stim_maker and save them
         for i in range(n_samples):
             print_progress(count=i, total=n_samples - 1)
             
@@ -112,7 +132,7 @@ def make_tfrecords(out_path, stim_maker, state, shape_types, n_shapes, n_samples
             if state=='training':
                 [shape_1_images, shape_2_images, shapelabels, vernierlabels, nshapeslabels,
                  nshapeslabels_idx, x_shape_1, y_shape_1, x_shape_2, y_shape_2] = stim_maker.makeTrainBatch(
-                 shape_types, n_shapes, 1, reduce_df)
+                 shape_types, n_shapes, 1, train_procedure, overlap, centralize, reduce_df)
 
             elif state=='testing':
                 try:
@@ -122,9 +142,7 @@ def make_tfrecords(out_path, stim_maker, state, shape_types, n_shapes, n_samples
                     chosen_shape = shape_types
                 [shape_1_images, shape_2_images, shapelabels, vernierlabels, nshapeslabels,
                  nshapeslabels_idx, x_shape_1, y_shape_1, x_shape_2, y_shape_2] = stim_maker.makeTestBatch(
-                 chosen_shape, n_shapes, 1, stim_idx, reduce_df)
-            else:
-                raise SystemExit('\nPROBLEM: unknown state!')
+                 chosen_shape, n_shapes, 1, stim_idx, centralize, reduce_df)
 
             # Convert the image to raw bytes.
             shape_1_images_bytes = shape_1_images.tostring()
@@ -168,58 +186,61 @@ def make_tfrecords(out_path, stim_maker, state, shape_types, n_shapes, n_samples
 #     Create tfrecords files:     #
 ###################################
 print('\n-------------------------------------------------------')
-print('Creating tfrecords files of type')
+print('Creating tfrecords files of type:', parameters.train_procedure)
+print('Overlap:', parameters.overlapping_shapes)
 
 stim_maker = stim_maker_fn(parameters.im_size, parameters.shape_size, parameters.bar_width)
 
 if not os.path.exists(parameters.data_path):
     os.mkdir(parameters.data_path)
 
+
 # Create the training set:
 if training:
     mode = 'training'
     shape_types_train = parameters.shape_types
-    make_tfrecords(parameters.train_data_path, stim_maker, mode, shape_types_train,
-                   parameters.n_shapes, parameters.n_train_samples,
-                   reduce_df=parameters.reduce_df)
+    make_tfrecords(parameters.train_data_path, stim_maker, mode, shape_types_train, parameters.n_shapes,
+                   parameters.n_train_samples, parameters.train_procedure, parameters.overlapping_shapes,
+                   centralize=parameters.centralized_shapes, reduce_df=parameters.reduce_df)
     print('\n-------------------------------------------------------')
     print('Finished creation of training set')
     print('-------------------------------------------------------')
 
 
-# Create the validation and the test sets that use the stimuli of the training set:
+# Create the validation and the test set that uses the same stimuli as in
+# the training set:
 if testing:
     mode = 'training'
     shape_types_train = parameters.shape_types
     train_procedure = 'vernier_shape'
 
-    # Validation set with all possible training stimuli:
-    make_tfrecords(parameters.val_data_path, stim_maker, mode, shape_types_train,
-                   parameters.n_shapes, parameters.n_test_samples,
-                   reduce_df=parameters.reduce_df)
+    # Validation set:
+    make_tfrecords(parameters.val_data_path, stim_maker, mode, shape_types_train, parameters.n_shapes, 
+                   parameters.n_test_samples, train_procedure, parameters.overlapping_shapes,
+                   centralize=parameters.centralized_shapes, reduce_df=parameters.reduce_df)
 
     # Individual test sets:
     for i in range(len(parameters.test_data_paths)):
         # +1 to skip a vernier-vernier configuration
         chosen_shape = shape_types_train[i+1]
         test_file_path = parameters.test_data_paths[i]
-        make_tfrecords(test_file_path, stim_maker, mode, chosen_shape,
-                       parameters.n_shapes, parameters.n_test_samples,
-                       reduce_df=parameters.reduce_df)
+        make_tfrecords(test_file_path, stim_maker, mode, chosen_shape, parameters.n_shapes,
+                       parameters.n_test_samples, train_procedure, parameters.overlapping_shapes,
+                       centralize=parameters.centralized_shapes, reduce_df=parameters.reduce_df)
     print('\n-------------------------------------------------------')
     print('Finished creation of regular validation and test sets')
     print('-------------------------------------------------------')
 
 
-# Create the validation and the test set that uses crowding/uncrowding/control stimuli:
+# Create the validation and the test set that uses crowding/uncrowding/no-uncrowding
+# stimuli:
 if testing_crowding:
     mode = 'testing'
     shape_types_test = parameters.test_shape_types
     
-    # Validation set with all possible stimuli:
-    make_tfrecords(parameters.val_crowding_data_path, stim_maker, mode, shape_types_test,
-                   parameters.n_shapes, parameters.n_test_samples,
-                   reduce_df=parameters.reduce_df)
+    # Validation sets:
+    make_tfrecords(parameters.val_crowding_data_path, stim_maker, mode, shape_types_test, parameters.n_shapes,
+                   parameters.n_test_samples, centralize=parameters.centralized_shapes, reduce_df=parameters.reduce_df)
 
     # Individual test sets:
     for i in range(len(shape_types_test)):
@@ -229,9 +250,11 @@ if testing_crowding:
             os.mkdir(test_data_path)
         for stim_idx in range(n_idx):
             test_file_path = test_data_path + '/' + str(stim_idx) + '.tfrecords'
-            make_tfrecords(test_file_path, stim_maker, mode, chosen_shape,
-                           parameters.n_shapes, parameters.n_test_samples,
-                           reduce_df=parameters.reduce_df, stim_idx=stim_idx)
+            make_tfrecords(test_file_path, stim_maker, mode, chosen_shape, parameters.n_shapes,
+                           parameters.n_test_samples, stim_idx=stim_idx, centralize=parameters.centralized_shapes,
+                           reduce_df=parameters.reduce_df)
     print('\n-------------------------------------------------------')
     print('Finished creation of crowding validaton and test sets')
     print('-------------------------------------------------------')
+
+

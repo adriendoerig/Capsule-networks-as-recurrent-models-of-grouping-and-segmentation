@@ -1,24 +1,27 @@
-# -*- coding: utf-8 -*-
 """
+Capsule Networks as Recurrent Models of Grouping and Segmentation
+
 Experiment 1: Crowding and Uncrowding Naturally Occur in CapsNets
 
-Exemplary parameters file used to get the data presented in our paper
+Parameters file used to get the data presented in our paper
 @author: Lynn Schmittwilken
 """
 
 import tensorflow as tf
 import numpy as np
 
-flags = tf.app.flags
 
+flags = tf.app.flags
 
 ###########################
 #          Paths          #
 ###########################
-# General:
+# General log data paths:
 data_path = './data'
-MODEL_NAME = '_logs_2'
+MODEL_NAME = '_logs_1'
 flags.DEFINE_string('data_path', data_path, 'path where all data files are located')
+flags.DEFINE_string('logdir', data_path + '/' + MODEL_NAME + '/', 'save the model results here')
+
 
 # Training data set involving all shape defined in shape_types:
 flags.DEFINE_string('train_data_path', data_path+'/train.tfrecords', 'path for tfrecords with training set')
@@ -86,8 +89,6 @@ flags.DEFINE_list('test_crowding_data_paths',
                    data_path+'/test_crowding_6stars_hexagons'
                    ], 'path for tfrecords with test crowding set')
 
-flags.DEFINE_string('logdir', data_path + '/' + MODEL_NAME + '/', 'save the model results here')
-
 
 ###########################
 #     Reproducibility     #
@@ -102,9 +103,13 @@ flags.DEFINE_integer('random_seed', None, 'if not None, set seed for weights ini
     # After changing any of the following stimulus parameters, you need to
     # recreate the datasets
 flags.DEFINE_string('train_procedure', 'random', 'choose between having vernier_shape, random_random and random')
+flags.DEFINE_boolean('overlapping_shapes', True,  'if true, shapes and vernier might overlap')
+flags.DEFINE_boolean('centralized_shapes', False,  'if true, each shape is in the middle of the image')
 flags.DEFINE_boolean('reduce_df', True,  'if true, the degrees of freedom for position on the x axis get adapted')
+
 flags.DEFINE_integer('n_train_samples', 100000, 'number of samples in the training set')
 flags.DEFINE_integer('n_test_samples', 2400, 'number of samples in the test set')
+flags.DEFINE_integer('n_idx', 3, 'number of test conditions')
 
 im_size = [20, 72]
 flags.DEFINE_list('im_size', im_size, 'image size of datasets')
@@ -128,18 +133,17 @@ test_shape_types = [1, 2, 3, 4, 5, 6,
                     445, 454, 446, 464,
                     456, 465]
 
-flags.DEFINE_list('shape_types', shape_types, 'pool of shapes')
-flags.DEFINE_list('test_shape_types', test_shape_types, 'shape configurations during testing')
+flags.DEFINE_list('shape_types', shape_types, 'pool of shapes (see batchmaker)')
+flags.DEFINE_list('test_shape_types', test_shape_types, 'pool of shapes (see batchmaker)')
 flags.DEFINE_list('n_shapes', [1, 3, 5], 'pool of shape repetitions per stimulus')
 
 
 ###########################
 #    Data augmentation    #
 ###########################
-flags.DEFINE_list('train_noise', [0.02, 0.04], 'amount of added random Gaussian noise')
-flags.DEFINE_list('test_noise', [0.04, 0.06], 'amount of added random Gaussian noise')
+flags.DEFINE_list('train_noise', [0.02, 0.04], 'amount of added random Gaussian noise to the training set')
+flags.DEFINE_list('test_noise', [0.04, 0.06], 'amount of added random Gaussian noise to the test set')
 flags.DEFINE_list('clip_values', [0., 1.], 'min and max pixel value for every image')
-flags.DEFINE_boolean('allow_flip_augmentation', False, 'augment by flipping the image up/down or left/right')
 flags.DEFINE_boolean('allow_contrast_augmentation', True, 'augment by changing contrast and brightness')
 flags.DEFINE_float('delta_brightness', 0.1, 'factor to adjust brightness (+/-), must be non-negative')
 flags.DEFINE_list('delta_contrast', [0.6, 1.2], 'min and max factor to adjust contrast, must be non-negative')
@@ -148,7 +152,7 @@ flags.DEFINE_list('delta_contrast', [0.6, 1.2], 'min and max factor to adjust co
 ###########################
 #   Network parameters    #
 ###########################
-# Conv and primary caps:
+# Conv and primary caps hyperparameters:
 caps1_nmaps = len(shape_types)
 caps1_ndims = 2
 
@@ -177,7 +181,7 @@ flags.DEFINE_integer('caps1_ndims', caps1_ndims, 'primary caps, number of dims')
 
 # Output caps:
 flags.DEFINE_integer('caps2_ncaps', len(shape_types), 'second caps layer, number of caps')
-flags.DEFINE_integer('caps2_ndims', 10, 'second caps layer, number of dims')
+flags.DEFINE_integer('caps2_ndims', 8, 'second caps layer, number of dims')
 
 
 # Decoder reconstruction:
@@ -196,7 +200,7 @@ flags.DEFINE_float('learning_rate', 0.0004, 'chosen learning rate for training')
 flags.DEFINE_float('learning_rate_decay_steps', 250, 'decay for cosine decay restart')
 
 flags.DEFINE_integer('n_epochs', None, 'number of epochs, if None allow for indifinite readings')
-flags.DEFINE_integer('n_steps', 5000, 'number of steps')
+flags.DEFINE_integer('n_steps', 2500, 'number of steps')
 flags.DEFINE_integer('n_rounds', 1, 'number of evaluations; full training steps is equal to n_steps times this number')
 flags.DEFINE_integer('n_iterations', 10, 'number of trained networks')
 
@@ -224,8 +228,8 @@ flags.DEFINE_string('location_loss', location_loss, 'currently either xentropy o
 # Control magnitude of losses
 flags.DEFINE_float('alpha_vernieroffset', 1., 'alpha for vernieroffset loss')
 flags.DEFINE_float('alpha_margin', 0.5, 'alpha for margin loss')
-flags.DEFINE_float('alpha_shape_1_reconstruction', 0.0005, 'alpha for reconstruction loss for vernier image (reduce_sum)')
-flags.DEFINE_float('alpha_shape_2_reconstruction', 0.0001, 'alpha for reconstruction loss for shape image (reduce_sum)')
+flags.DEFINE_float('alpha_shape_1_reconstruction', 0.0005, 'alpha for reconstruction loss for vernier image')
+flags.DEFINE_float('alpha_shape_2_reconstruction', 0.0001, 'alpha for reconstruction loss for shape image')
 
 if nshapes_loss=='xentropy':
     flags.DEFINE_float('alpha_nshapes', 0.4, 'alpha for nshapes loss')
@@ -251,10 +255,9 @@ flags.DEFINE_float('lambda_val', 0.5, 'down weight of the loss for absent digit 
 
 
 ###########################
-#     Regularization       #
+#     Regularization      #
 ###########################
-
-flags.DEFINE_boolean('dropout', True, 'use dropout after conv layers 1&2')
+flags.DEFINE_boolean('dropout', False, 'use dropout after conv layers 1&2')
 flags.DEFINE_boolean('batch_norm_conv', False, 'use batch normalization between every conv layer')
 flags.DEFINE_boolean('batch_norm_reconstruction', False, 'use batch normalization for the reconstruction decoder layers')
 flags.DEFINE_boolean('batch_norm_vernieroffset', False, 'use batch normalization for the vernieroffset loss layer')

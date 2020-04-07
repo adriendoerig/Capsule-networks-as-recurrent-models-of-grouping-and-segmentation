@@ -1,5 +1,6 @@
-# -*- coding: utf-8 -*-
 """
+Capsule Networks as Recurrent Models of Grouping and Segmentation
+
 Experiment 1: Crowding and Uncrowding Naturally Occur in CapsNets
 
 This is the model function used for the Estimator API of tensorflow
@@ -29,13 +30,10 @@ def model_fn(features, labels, mode, params):
     # mode:     Either TRAIN, EVAL, or PREDICT
     # params:   Optional parameters; here not needed because of parameter-file
     
-    # Plot each four (reconstructed) input images in tensorboard
-    plot_n_images = 4
-    log_dir = params['log_dir']
-    
     ##########################################
     #      Prepararing input variables:      #
     ##########################################
+    log_dir = params['log_dir']
     shape_1_images = tf.cast(features['shape_1_images'], tf.float32)
     shape_2_images = tf.cast(features['shape_2_images'], tf.float32)
     shapelabels = tf.cast(features['shapelabels'], tf.int64)
@@ -50,6 +48,9 @@ def model_fn(features, labels, mode, params):
     
     input_images = tf.add(shape_1_images, shape_2_images, name='input_images')
     input_images = tf.clip_by_value(input_images, parameters.clip_values[0], parameters.clip_values[1], name='input_images_clipped')
+    
+    # Plot each four (reconstructed) input images in tensorboard
+    plot_n_images = 4
     tf.summary.image('full_input_images', input_images, plot_n_images)
     
     # If we pass a batch size via params, use this one
@@ -57,7 +58,13 @@ def model_fn(features, labels, mode, params):
         batch_size = params['batch_size']
     except:
         batch_size = parameters.batch_size
-
+    
+    # If we pass a parameter for getting reconstructions, use it, otherwise
+    # do not create reconstructions during testing
+    try:
+        get_reconstructions = params['get_reconstructions']
+    except:
+        get_reconstructions = False
 
     # We need to know how many different shape types can occur in the input image
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -68,14 +75,14 @@ def model_fn(features, labels, mode, params):
             n_shapes  = shapelabels.shape[1]
     
         elif parameters.train_procedure=='random':
-            # For the random condition, we only have one shape during train and eval
+            # For the random condition, we only use shape_1 during train and eval
             n_shapes = 1
             shapelabels = shapelabels[:, 0]
             nshapeslabels = nshapeslabels[:, 0]
     
         else:
             raise SystemExit('\nThe chosen train_procedure is unknown!\n')
-    
+
 
     ##########################################
     #          Build the capsnet:            #
@@ -97,7 +104,8 @@ def model_fn(features, labels, mode, params):
         vernierlabels_pred, vernieroffset_loss, vernieroffset_accuracy = compute_vernieroffset_loss(shape_1_caps_activation,
                                                                                                     vernierlabels, parameters,
                                                                                                     is_training)
-
+        
+        # Visualizations for tensorboard
         vernieroffset_loss = parameters.alpha_vernieroffset * vernieroffset_loss
         tf.summary.scalar('vernieroffset_loss', vernieroffset_loss)
         tf.summary.scalar('vernieroffset_accuracy', vernieroffset_accuracy)
@@ -110,11 +118,16 @@ def model_fn(features, labels, mode, params):
     ##########################################
     # How many shapes have to be predicted? Predict them:
         with tf.name_scope('2_predict_shapes'):
-            shapelabels_pred = predict_shapelabels(caps2_output, n_shapes)[0]
+            # For reconstructions during testing, we would like to get the
+            # top three predicted shapes
+            if get_reconstructions:
+                pred_n_shapes = 3
+            else:
+                pred_n_shapes = n_shapes
+            shapelabels_pred = predict_shapelabels(caps2_output, pred_n_shapes)[0]
             
-            # For prediction: we want a ranking of the most probably shapes:
-            rank_pred_shapes, rank_pred_proba = predict_shapelabels(caps2_output,
-                                                                    len(parameters.shape_types))
+            # For prediction: give me a ranking of most probably shapes:
+            rank_pred_shapes, rank_pred_proba = predict_shapelabels(caps2_output, len(parameters.shape_types))
     
     
     ##########################################
@@ -160,6 +173,7 @@ def model_fn(features, labels, mode, params):
                 decoder_output_images_rgb_0 = tf.image.grayscale_to_rgb(shape_1_img_reconstructed) * color_masks[0, :, :, :]
                 decoder_output_images_rgb_1 = tf.image.grayscale_to_rgb(shape_2_img_reconstructed) * color_masks[1, :, :, :]
 
+                # Visualization in tensorboard
                 decoder_output_img = decoder_output_images_rgb_0 + decoder_output_images_rgb_1
                 tf.summary.image('decoder_output_img', decoder_output_img, plot_n_images)
                 
@@ -195,6 +209,7 @@ def model_fn(features, labels, mode, params):
             shape_2_reconstruction_loss = 0.
             reconstruction_loss = 0.
 
+        # Visualization in tensorboard
         tf.summary.scalar('shape_1_reconstruction_loss', shape_1_reconstruction_loss)
         tf.summary.scalar('shape_2_reconstruction_loss', shape_2_reconstruction_loss)
         tf.summary.scalar('reconstruction_loss', reconstruction_loss)
@@ -203,37 +218,33 @@ def model_fn(features, labels, mode, params):
     ##########################################
     #            Prediction mode:            #
     ##########################################
+    # What do we want as an output if the network is in testing / prediction mode:
     if mode == tf.estimator.ModeKeys.PREDICT:
-        if params['get_reconstructions']:
-            # If in prediction mode, we want to make sure to also have a reconstruction
-            # of the vernier (even if it is not predicted):
-            vernier_decoder_input = create_masked_decoder_input(mask_with_labels,
-                                                                shapelabels[:, 0],
-                                                                shapelabels[:, 0],
-                                                                caps2_output,
-                                                                parameters)
-            vernier_output_reconstructed = compute_reconstruction(vernier_decoder_input,
-                                                                  parameters,
-                                                                  is_training,
-                                                                  conv_output_sizes)
-
-            vernier_img_reconstructed = tf.reshape(
-                vernier_output_reconstructed,
-                [batch_size, parameters.im_size[0], parameters.im_size[1], parameters.im_depth],
-                name='vernier_img_reconstructed')
-
+        if get_reconstructions:
+            # If we want to get reconstructions of the top three shapes during
+            # testing, we need to also create a reconstruction for the third 
+            # shape here:
+            shape_3_decoder_input = create_masked_decoder_input(
+                    mask_with_labels, shapelabels[:, 1], shapelabels_pred[:, 2], caps2_output, parameters)
+            shape_3_output_reconstructed = compute_reconstruction(shape_3_decoder_input, parameters, is_training, conv_output_sizes)
+            shape_3_img_reconstructed = tf.reshape(
+                    shape_3_output_reconstructed,
+                    [batch_size, parameters.im_size[0], parameters.im_size[1], parameters.im_depth],
+                    name='shape_3_img_reconstructed')
+            
             predictions = {'decoder_output_img1': shape_1_img_reconstructed,
                            'decoder_output_img2': shape_2_img_reconstructed,
-                           'decoder_vernier_img': vernier_img_reconstructed}
-
+                           'decoder_output_img3': shape_3_img_reconstructed}
         else:
+            # In case, we do not want to get reconstructions during testing,
+            # we are evaluating the vernier discrimination performance based
+            # on the vernier accuracy. Furthermore, we are outputting the
+            # caps2 output norms to judge how confident the network was that
+            # a specific shape was present in the input image
             predictions = {'vernier_accuracy': tf.ones(shape=batch_size) * vernieroffset_accuracy,
                            'rank_pred_shapes': rank_pred_shapes,
-                           'rank_pred_proba': rank_pred_proba,
-                           'pred_vernier': vernierlabels_pred,
-                           'real_vernier': vernierlabels,
-                           'input_images': input_images}
-
+                           'rank_pred_proba': rank_pred_proba}
+        
         spec = tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
 
@@ -253,6 +264,8 @@ def model_fn(features, labels, mode, params):
             # Define the loss-function to be optimized
             margin_loss = compute_margin_loss(caps2_output_norm, shapelabels, parameters)
             margin_loss = parameters.alpha_margin * margin_loss
+            
+            # Visualization in tensorboard
             tf.summary.scalar('margin_loss', margin_loss)
     
 
@@ -276,6 +289,7 @@ def model_fn(features, labels, mode, params):
                 nshapes_loss = 0.
                 nshapes_accuracy = 0.
                 
+            # Visualization in tensorboard
             tf.summary.scalar('nshapes_loss', nshapes_loss)
             tf.summary.scalar('nshapes_accuracy', nshapes_accuracy)
 
@@ -316,6 +330,7 @@ def model_fn(features, labels, mode, params):
                 y_shape_2_loss = 0.
                 location_loss = 0.
             
+            # Visualization in tensorboard
             tf.summary.scalar('x_shape_1_loss', x_shape_1_loss)
             tf.summary.scalar('y_shape_1_loss', y_shape_1_loss)
             tf.summary.scalar('x_shape_2_loss', x_shape_2_loss)
@@ -338,17 +353,20 @@ def model_fn(features, labels, mode, params):
     ##########################################
     #        Training operations             #
     ##########################################
-        # The following is needed due to how tf.layers.batch_normalzation works
+        # The following is needed due to how tf.layers.batch_normalzation works:
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        
         with tf.control_dependencies(update_ops):
-            # use a learning rate with cosine decay restarts
+            # Use a learning rate with cosine decay restarts
             learning_rate = tf.train.cosine_decay_restarts(parameters.learning_rate, tf.train.get_global_step(),
                                                            parameters.learning_rate_decay_steps, name='learning_rate')
             optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
             train_op = optimizer.minimize(loss=final_loss, global_step=tf.train.get_global_step(), name='train_op')
+            
+            # Visualization in tensorboard
             tf.summary.scalar('learning_rate', learning_rate)
         
-        # write summaries during evaluation
+        # Write summaries during evaluation
         eval_summary_hook = tf.train.SummarySaverHook(save_steps=100,
                                                       output_dir=log_dir + '/eval',
                                                       summary_op=tf.summary.merge_all())
@@ -362,5 +380,3 @@ def model_fn(features, labels, mode, params):
             evaluation_hooks=[eval_summary_hook])
     
     return spec
-
-
