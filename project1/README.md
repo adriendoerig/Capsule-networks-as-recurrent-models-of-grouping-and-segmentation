@@ -32,7 +32,7 @@ Next, run
 python capser_main.py
 ```
 This will train and test the selected number of networks (default: 10).
-By default, this will also automatically initiate the get_reconstructions.py code to create plots containing the exemplary reconstructions of the input images during testing as included in the paper.
+By default, this will also automatically initiate the get_reconstructions.py code to create plots containing exemplary reconstructions of the input images during testing as included in the paper.
 
 In order to create the final performance plots averaged over all networks, run
 ```
