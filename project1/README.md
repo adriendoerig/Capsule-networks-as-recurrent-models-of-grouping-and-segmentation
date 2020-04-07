@@ -31,7 +31,7 @@ python capser_main.py
 ```
 This will train and test the selected number of networks (default: 10). By default, all output files will be saved in *./data/_logs_1*. After executing the code, this logdir contains the final results (means and errors) averaged over all trained networks, a *.txt* copy of the *parameters.py*, as well as the individual network outputs in the folders *./data/_logs_1/0* to *./data/_logs_1/9*.
 
-By default, running *capser_main.py* will automatically initiate get_reconstructions.py code to create plots containing exemplary reconstructions of the input images during testing as included in the paper. If this is not the case, you can create figures with the reconstructed input images during training by running
+By default, running *capser_main.py* will automatically initiate *get_reconstructions.py* to create plots containing exemplary reconstructions of the input images during testing as included in the paper. If this is not the case, you can create figures with the reconstructed input images during training by running
 ```
 python get_reconstructions.py
 ```
