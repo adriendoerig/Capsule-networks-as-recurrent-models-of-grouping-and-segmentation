@@ -96,7 +96,7 @@ crit_idx1 = np.where(crit_value1 < 0.55)
 crit_value2 = np.min(results[:, 0:2, 1, chosen_routing_iter-routing_min], 1)
 crit_idx2 = np.where(crit_value2 < 0.45)
 
-crit_value3 = np.mean(results[:, 0:2, 1, chosen_routing_iter-routing_min], 1)
+crit_value3 = np.min(results[:, 0:2, 1, chosen_routing_iter-routing_min], 1)
 crit_idx3 = np.where(crit_value3 > 0.95)
 
 crit_idx_all = np.unique(np.concatenate((crit_idx1, crit_idx2, crit_idx3), 1))
