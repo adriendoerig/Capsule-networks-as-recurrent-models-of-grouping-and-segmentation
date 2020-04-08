@@ -229,7 +229,6 @@ with open(txt_file, 'w') as f_txt:
             '\nlines vs. 0 p-value (2-tailed 1-sample t-test): ' + str(model_lines_vs_zero_p_value),
             '\ncuboids vs. 0 p-value (2-tailed 1-sample t-test): ' + str(model_cuboids_vs_zero_p_value)]
     f_txt.writelines(text)
-    print('Parameter values saved.')
 
 
 ###########################
