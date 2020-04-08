@@ -107,7 +107,7 @@ error_diff_results = np.squeeze(np.std(diff_results, 1)) * 100 / np.sqrt(n_itera
 
 # Create and save the final performance figure:
 performance_png_file = parameters.logdir + '/final_performance.png'
-plot_uncrowding_results(mean_diff_results, error_diff_results, performance_png_file)
+plot_uncrowding_results(mean_diff_results, error_diff_results, parameters, performance_png_file)
 
-print('... Finished creation of /performance_plots.png')
+print('... Finished creation of /final_performance.png')
 print('-------------------------------------------------------')
