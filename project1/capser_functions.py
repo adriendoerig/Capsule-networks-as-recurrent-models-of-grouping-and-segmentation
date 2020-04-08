@@ -41,7 +41,7 @@ def save_params(save_path, parameters):
                 Involes all parameters defined in parameters.py
     '''
     
-    txt_file = save_path + '/parameters.txt'
+    txt_file = save_path + 'parameters.txt'
     if os.path.exists(txt_file):
         # prevent accidentally overriding the current parameters.txt
         raise SystemExit('\nPROBLEM: %s already exists! '
