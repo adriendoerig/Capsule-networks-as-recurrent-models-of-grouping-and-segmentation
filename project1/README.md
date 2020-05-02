@@ -16,7 +16,7 @@ This code was tested with the following modules/packages. It is not ensured that
 * Skimage 0.14.0
 
 ## *parameters.py*
-This file contains most of the parameters used for running the code. It is recommended to get familiar and check the parameters (such as the data paths, the stimulus parameters, and the network parameters) before executing the code.
+This file contains most of the parameters used for running the code. It is recommended to get familiar and check the parameters (such as the network architecture to use, the data paths, the stimulus parameters, and the network parameters) before executing the code.
 
 ## Running the code
 If you are running the code for the first time, create the datasets used for training and testing by running
@@ -29,18 +29,19 @@ Next, run
 ```
 python capser_main.py
 ```
-This will train and test the selected number of networks (default: 10). By default, all output files will be saved in *./data/_logs_1*. After executing the code, this logdir contains the final results (means and errors) averaged over all trained networks, a *.txt* copy of the *parameters.py*, as well as the individual network outputs in the folders *./data/_logs_1/0* to *./data/_logs_1/9*.
+This will train and test the selected number of networks (default: 10). By default, all output files will be saved in *./data/_logs_CAPSNET*. After executing the code, this logdir contains the final results (means and errors) averaged over all trained networks, a *.txt* copy of the *parameters.py*, as well as the individual network outputs in the folders *./data/_logs_CAPSNET/0* to *./data/_logs_CAPSNET/9*.
 
 By default, running *capser_main.py* will automatically initiate *get_reconstructions.py* to create plots containing exemplary reconstructions of the input images during testing as included in the paper. If this is not the case, you can create figures with the reconstructed input images during training by running
 ```
 python get_reconstructions.py
 ```
-The reconstructions will be saved in *./data/_logs_1/network_ID/reconstructions* (e.g. *./data/_logs_1/0/reconstructions*).
+The reconstructions will be saved in *./data/_logs_CAPSNET/network_ID/reconstructions* (e.g. *./data/_logs_CAPSNET/0/reconstructions*).
 
-In order to create the final performance plot (*./data/_logs_1/final_performance.png*) averaged over all networks, run
+In order to create the final performance plot (*./data/_logs_CAPSNET/final_performance.png*) averaged over all networks, run
 ```
 python plot_final_performance.py
 ```
+This will also clean the results from potentially floored networks.
 
 ## Acknowledgements
 Code written and executed by Lynn Schmittwilken (l.schmittwilken@tu-berlin.de).

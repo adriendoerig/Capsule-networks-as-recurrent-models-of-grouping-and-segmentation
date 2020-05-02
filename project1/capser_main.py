@@ -78,7 +78,6 @@ results = np.zeros(shape=(n_categories, n_idx, n_iterations))
 ###########################
 #       Main script:      #
 ###########################
-
 model_fn = capser_model_fn if parameters.net_type.lower() == 'capsnet' else cnn_model_fn
 for idx_execution in range(n_iterations):
     log_dir = parameters.logdir + str(idx_execution) + '/'
