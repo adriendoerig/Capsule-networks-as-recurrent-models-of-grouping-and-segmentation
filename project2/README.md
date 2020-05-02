@@ -38,4 +38,4 @@ python plot_final_performance.py
 The code will also perform a statistical analysis comparing the distribution of performances over time/routing iterations (more precisely: the performance slopes) between the different configurations (lines vs. cuboids).
 
 ## Acknowledgements
-We would like to thank Lynn Schmittwilken (l.schmittwilken@tu-berlin.de) for the creation and execution of the code.
+Code written and executed by Lynn Schmittwilken (l.schmittwilken@tu-berlin.de).

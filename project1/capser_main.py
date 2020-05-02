@@ -20,7 +20,7 @@ import re
 #from tensorboard.plugins.beholder import BeholderHook
 
 from parameters import parameters
-from capser_model_fn import model_fn
+from capser_model_fn import capser_model_fn, cnn_model_fn
 from capser_input_fn import train_input_fn, eval_input_fn, predict_input_fn
 from capser_functions import save_params, plot_uncrowding_results
 
@@ -28,6 +28,7 @@ from capser_functions import save_params, plot_uncrowding_results
 print('-------------------------------------------------------')
 print('TF version:', tf.__version__)
 print('Starting capsnet script...')
+print('Chosen net_tyoe procedure:', parameters.net_type)
 print('Chosen training procedure:', parameters.train_procedure)
 print('-------------------------------------------------------')
 
@@ -77,6 +78,8 @@ results = np.zeros(shape=(n_categories, n_idx, n_iterations))
 ###########################
 #       Main script:      #
 ###########################
+
+model_fn = capser_model_fn if parameters.net_type.lower() == 'capsnet' else cnn_model_fn
 for idx_execution in range(n_iterations):
     log_dir = parameters.logdir + str(idx_execution) + '/'
     
@@ -91,8 +94,8 @@ for idx_execution in range(n_iterations):
 #    beholder_hook = BeholderHook(log_dir)
     
     # Create the estimator (Retain the 2 most recent checkpoints)
-    checkpointing_config = tf.estimator.RunConfig(keep_checkpoint_max = 2)
-    
+    checkpointing_config = tf.estimator.RunConfig(keep_checkpoint_max=2)
+
     capser = tf.estimator.Estimator(model_fn=model_fn, model_dir=log_dir,
                                     config=checkpointing_config,
                                     params={'log_dir': log_dir})

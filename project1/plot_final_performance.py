@@ -98,12 +98,27 @@ for idx_execution in range(n_iterations):
             results[:, :, idx_execution] = np.reshape(numbers, [-1, n_idx])
 
 
+###########################
+#      Data cleaning:     #
+###########################
+# We clean the results from networks if the performance for the  vernier-alone
+# condition is smaller than 0.55 (= vernier not learned / floored)
+crit_value = np.mean(np.squeeze(results[:, 0, :]), 0)
+crit_idx = np.where(crit_value < 0.55)
+good_idx_all = np.delete(np.arange(0, n_iterations), crit_idx)
+
+cleaned_results = results[:, :, good_idx_all]
+n_nets = len(good_idx_all)
+
+
+###########################
+#        Plotting         #
+###########################
 # We want to plot the final results as difference between the uncrowding and
 # no-uncrowding condition
-diff_results = np.squeeze(results[:, 2, :] - results[:, 1, :])
+diff_results = np.squeeze(cleaned_results[:, 2, :] - cleaned_results[:, 1, :])
 mean_diff_results = np.squeeze(np.mean(diff_results, 1)) * 100
-error_diff_results = np.squeeze(np.std(diff_results, 1)) * 100 / np.sqrt(n_iterations)
-
+error_diff_results = np.squeeze(np.std(diff_results, 1)) * 100 / np.sqrt(n_nets)
 
 # Create and save the final performance figure:
 performance_png_file = parameters.logdir + '/final_performance.png'

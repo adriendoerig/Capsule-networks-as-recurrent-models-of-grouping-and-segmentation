@@ -18,7 +18,9 @@ flags = tf.app.flags
 ###########################
 # General log data paths:
 data_path = './data'
-MODEL_NAME = '_logs_1'
+net_type = 'CAPSNET'  # 'CAPSNET', 'CNN', 'LATERAL_RNN' or 'TOPDOWN:RNN'
+MODEL_NAME = '_logs_' + net_type
+flags.DEFINE_string('net_type', net_type, 'choose CNN, LATERAL_RNN or TOPDOWN_RNN')
 flags.DEFINE_string('data_path', data_path, 'path where all data files are located')
 flags.DEFINE_string('logdir', data_path + '/' + MODEL_NAME + '/', 'save the model results here')
 
@@ -165,8 +167,8 @@ stride3 = 2
 
 # Calculate the output dimensions of the last convolutional layer in order to
 # calculate the total number of primary capsules:
-dim1 = int(np.ceil((((((im_size[0] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
-dim2 = int(np.ceil((((((im_size[1] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
+dim1 = int(np.round((((((im_size[0] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
+dim2 = int(np.round((((((im_size[1] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
 
 conv1_params = {'filters': caps1_nmaps*caps1_ndims, 'kernel_size': kernel1, 'strides': stride1, 'padding': 'valid'}
 conv2_params = {'filters': caps1_nmaps*caps1_ndims, 'kernel_size': kernel2, 'strides': stride2, 'padding': 'valid'}
@@ -255,8 +257,9 @@ flags.DEFINE_float('lambda_val', 0.5, 'down weight of the loss for absent digit 
 
 
 ###########################
-#     Regularization      #
+#     Regularization       #
 ###########################
+
 flags.DEFINE_boolean('dropout', False, 'use dropout after conv layers 1&2')
 flags.DEFINE_boolean('batch_norm_conv', False, 'use batch normalization between every conv layer')
 flags.DEFINE_boolean('batch_norm_reconstruction', False, 'use batch normalization for the reconstruction decoder layers')

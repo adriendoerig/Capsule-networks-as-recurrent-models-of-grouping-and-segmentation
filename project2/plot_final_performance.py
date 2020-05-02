@@ -32,7 +32,7 @@ print('-------------------------------------------------------')
 #      Preparations:      #
 ###########################
 # Choose whether to plot the errors or the improvements in performance
-plot_type = 'improvement'  # threshold-like, improvement
+plot_type = 'threshold-like'  # threshold-like, improvement
 save_plots = True
 
 # How many networks have been trained?
@@ -82,24 +82,28 @@ for idx_routing in range(routing_min, routing_max+1):
 ###########################
 #      Data cleaning:     #
 ###########################
-# We have to clean the results from ceiled or floored performances (especially
-# from performances below 50%):
+# We have to clean the results from ceiled or floored performances
 # 1. if the max performance for the flankers+vernier condition is smaller than
 #    0.55 (= floored)
-# 2. if the min performance for the vernier-alone or flankers+vernier condition
-#    is smaller than 0.5 (= floored and misleading)
-# 3. if the mean performance for the vernier-alone and flankers+vernier condition
-#    is larger than 0.95 (= ceiled)
-crit_value1 = np.max(np.squeeze(results[:, :, 1, chosen_routing_iter-routing_min]), 1)
+# 2. if the performance for the vernier-alone condition is smaller than 0.55
+#    (= vernier not learned / floored)
+# 3. if the min performance for the flankers+vernier condition is smaller than
+#    0.5 (= floored and misleading)
+# 4. if the min performance for the flankers+vernier condition is larger than
+#    0.95 (= ceiled)
+crit_value1 = np.max(np.squeeze(results[:, 0:2, 1, chosen_routing_iter-routing_min]), 1)
 crit_idx1 = np.where(crit_value1 < 0.55)
 
-crit_value2 = np.min(results[:, 0:2, 1, chosen_routing_iter-routing_min], 1)
-crit_idx2 = np.where(crit_value2 < 0.45)
+crit_value2 = np.mean(np.squeeze(results[:, :, 0, chosen_routing_iter-routing_min]), 1)
+crit_idx2 = np.where(crit_value2 < 0.55)
 
 crit_value3 = np.min(results[:, 0:2, 1, chosen_routing_iter-routing_min], 1)
-crit_idx3 = np.where(crit_value3 > 0.95)
+crit_idx3 = np.where(crit_value3 < 0.45)
 
-crit_idx_all = np.unique(np.concatenate((crit_idx1, crit_idx2, crit_idx3), 1))
+crit_value4 = np.min(results[:, 0:2, 1, chosen_routing_iter-routing_min], 1)
+crit_idx4 = np.where(crit_value4 > 0.95)
+
+crit_idx_all = np.unique(np.concatenate((crit_idx1, crit_idx2, crit_idx3, crit_idx4), 1))
 good_idx_all = np.delete(np.arange(0, n_iterations), crit_idx_all)
 
 cleaned_results = results[good_idx_all, :, :, :]
@@ -297,10 +301,10 @@ if plot_type=='improvement':
     ax.set_ylabel('Threshold improvement [arcsec]')
 elif plot_type=='threshold-like':
     ax.set_ylabel('Threshold [arcsec]')
-x_cat = ['1', '2', '3', '4', '5', '6', '7']
+x_cat = ['20', '40', '80', '120', '160', '320', '640']
 ax.set_xticks(x)
 ax.set_xticklabels(x_cat)
-ax.set_xlabel('Routing iterations')
+ax.set_xlabel('Stimulus duration [ms]')
 if save_plots:
     plt.savefig(parameters.logdir + 'final_performance_humans.png')
 else:

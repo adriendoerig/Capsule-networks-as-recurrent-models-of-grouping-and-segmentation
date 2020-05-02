@@ -18,7 +18,7 @@ flags = tf.app.flags
 ###########################
 # General data paths for logs:
 data_path = './data'
-MODEL_NAME = '_logs_1'
+MODEL_NAME = '_logs'
 flags.DEFINE_string('data_path', data_path, 'path where all data files are located')
 flags.DEFINE_string('logdir', data_path + '/' + MODEL_NAME + '/', 'save the model results here')
 
@@ -99,8 +99,8 @@ flags.DEFINE_list('test_configs', [test_configs], 'pool of shapes (see batchmake
 ###########################
 #    Data augmentation    #
 ###########################
-flags.DEFINE_list('train_noise', [0.0, 0.02], 'amount of added random Gaussian noise')
-flags.DEFINE_list('test_noise', [0.0, 0.05], 'amount of added random Gaussian noise')
+flags.DEFINE_list('train_noise', [0.02, 0.04], 'amount of added random Gaussian noise')
+flags.DEFINE_list('test_noise', [0.14, 0.16], 'amount of added random Gaussian noise')
 flags.DEFINE_list('clip_values', [0., 1.], 'min and max pixel value for every image')
 flags.DEFINE_boolean('allow_contrast_augmentation', True, 'augment by changing contrast and brightness')
 flags.DEFINE_float('delta_brightness', 0.1, 'factor to adjust brightness (+/-), must be non-negative')
@@ -139,7 +139,7 @@ flags.DEFINE_integer('caps1_ndims', caps1_ndims, 'primary caps, number of dims')
 
 # Output caps:
 flags.DEFINE_integer('caps2_ncaps', len(shape_types), 'second caps layer, number of caps')
-flags.DEFINE_integer('caps2_ndims', 3, 'second caps layer, number of dims')
+flags.DEFINE_integer('caps2_ndims', 7, 'second caps layer, number of dims')
 
 
 # Decoder reconstruction:
@@ -155,10 +155,10 @@ flags.DEFINE_integer('n_output', im_size[0]*im_size[1], 'output size of the deco
 # For training
 flags.DEFINE_integer('batch_size', 48, 'batch size')
 flags.DEFINE_float('learning_rate', 0.0004, 'chosen learning rate for training')
-flags.DEFINE_float('learning_rate_decay_steps', 500, 'decay for cosine decay restart')
+flags.DEFINE_float('learning_rate_decay_steps', 350, 'decay for cosine decay restart')
 
 flags.DEFINE_integer('n_epochs', None, 'number of epochs, if None allow for indifinite readings')
-flags.DEFINE_integer('n_steps', 4500, 'number of steps')
+flags.DEFINE_integer('n_steps', 3500, 'number of steps')
 flags.DEFINE_integer('n_rounds', 1, 'number of evaluations; full training steps is equal to n_steps times this number')
 flags.DEFINE_integer('n_iterations', 50, 'number of trained networks')
 

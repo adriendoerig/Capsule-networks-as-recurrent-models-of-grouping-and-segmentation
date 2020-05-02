@@ -43,4 +43,4 @@ python plot_final_performance.py
 ```
 
 ## Acknowledgements
-We would like to thank Lynn Schmittwilken (l.schmittwilken@tu-berlin.de) for the creation and execution of the code.
+Code written and executed by Lynn Schmittwilken (l.schmittwilken@tu-berlin.de).

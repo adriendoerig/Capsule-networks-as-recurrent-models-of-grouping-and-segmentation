@@ -402,6 +402,54 @@ def predict_shapelabels(caps2_output, n_labels):
         return labels_pred_sorted, labels_pred_proba_sorted
 
 
+def shape_loss_cnn(cnn_activation, shapelabels, parameters, phase=True):
+    '''
+    Get predicted shape type loss for the cnn/rnn control network. These nets cannot use margin loss because they
+    do not include capsules, so we use a decoder on the output layer instead.
+
+    Parameters
+    ----------
+    cnn_activation: tensor
+                    CNN final layer outputs
+    shapelabels: tensor
+                 Correct shapetype labels
+
+    Returns
+    -------
+    labels_pred_sorted: tensor
+                        List (of length n_labels) with numerically sorted predicted
+                        shape types
+    labels_pred_proba_sorted: tensor
+                              List (of length n_labels) with corresponding probabilities
+    '''
+    with tf.name_scope('compute_shape_loss'):
+
+        depth = parameters.caps2_ncaps  # this is the number of shape types
+        n_labels = tf.cond(phase, lambda: 1, lambda: 2, name='n_labels') # one shape at a time during training, two shapes at a time during testing (vernier+flanker)
+        T_shapelabels = tf.one_hot(tf.cast(shapelabels, tf.int64), depth, name='T_shapelabels')
+
+        # Decide whether to use batch normalization
+        if parameters.batch_norm_shapetype:
+            hidden = tf.layers.dense(cnn_activation, depth, use_bias=False, activation=None,
+                                                   name='hidden_shapeoffset')
+            hidden = tf.layers.batch_normalization(hidden, training=phase,
+                                                                 name='hidden_shapeoffset_bn')
+        else:
+            hidden = tf.layers.dense(cnn_activation, depth, activation=None, name='hidden_shapeoffset')
+
+        shapelabels_proba = tf.nn.relu(hidden, name='logits_shapelabels')
+        top_labels_pred_proba, top_labels_pred = tf.nn.top_k(shapelabels_proba, n_labels, name='y_proba')
+        top_ranked_shapelabels = tf.contrib.framework.sort(top_labels_pred_proba, direction='ASCENDING', name='ranked_shapelabels')
+        top_labels_pred_sorted_idx = tf.contrib.framework.argsort(top_labels_pred, axis=-1, direction='ASCENDING', name='labels_pred_sorted')
+        top_ranked_shapelabels_proba = tf.batch_gather(top_labels_pred_proba, top_labels_pred_sorted_idx)
+        xent_shapelabels = tf.losses.softmax_cross_entropy(T_shapelabels, shapelabels_proba) if phase is True else 0.  # no need to compute loss during resting
+
+        pred_shapelabels = tf.argmax(shapelabels_proba, axis=1, name='pred_shapelabels', output_type=tf.int64)
+        correct_shapelabels = tf.equal(shapelabels, tf.cast(top_labels_pred, tf.int64), name='correct_shapelabels')
+        accuracy_shapelabels = tf.reduce_mean(tf.cast(correct_shapelabels, tf.float32), name='accuracy_shapelabels')
+        return pred_shapelabels, xent_shapelabels, accuracy_shapelabels, top_ranked_shapelabels, top_ranked_shapelabels_proba
+
+
 def compute_margin_loss(caps2_output_norm, labels, parameters):
     '''
     Compute margin loss / shape type loss as proposed in the original paper
@@ -715,6 +763,53 @@ def compute_vernieroffset_loss(shape_1_caps_activation, vernierlabels, parameter
         pred_vernierlabels = tf.argmax(logits_vernierlabels, axis=1, name='pred_vernierlabels', output_type=tf.int64)
         correct_vernierlabels = tf.equal(vernierlabels, pred_vernierlabels, name='correct_vernierlabels')
         accuracy_vernierlabels = tf.reduce_mean(tf.cast(correct_vernierlabels, tf.float32), name='accuracy_vernierlabels')
+        return pred_vernierlabels, xent_vernierlabels, accuracy_vernierlabels
+
+
+def compute_vernieroffset_loss_cnn(cnn_activation, vernierlabels, parameters, phase=True):
+    '''
+    Create decoder for vernier offset in the CNN comparison neetwork and compute the loss as xentropy
+
+    Parameters
+    ----------
+    cnn_activation: tensor
+                    Outputs of the cnn
+    vernierlabels: tensor
+                   Correct vernier offset labels
+    parameters: flags
+                Contains all parameters defined in parameters.py
+    phase: bool
+           If True, the decoder is in training mode
+
+    Returns
+    -------
+    pred_vernierlabels: tensor
+                        Predicted vernier offset labels
+    xent_vernierlabels: tensor
+                        Vernier offset loss
+    accuracy_vernierlabels: tensor
+                            Accuracy for correctly predicting vernier offsets
+    '''
+    with tf.name_scope('compute_vernieroffset_loss'):
+        # Possible outcomes:
+        depth = 2
+        vernierlabels = tf.squeeze(vernierlabels)
+        T_vernierlabels = tf.one_hot(tf.cast(vernierlabels, tf.int64), depth, name='T_vernierlabels')
+
+        # Decide whether to use batch normalization
+        if parameters.batch_norm_vernieroffset:
+            hidden_vernieroffset = tf.layers.dense(cnn_activation, depth, use_bias=False, reuse=tf.AUTO_REUSE, activation=None, name='hidden_vernieroffset')
+            hidden_vernieroffset = tf.layers.batch_normalization(hidden_vernieroffset, reuse=tf.AUTO_REUSE, training=phase, name='hidden_vernieroffset_bn')
+        else:
+            hidden_vernieroffset = tf.layers.dense(cnn_activation, depth, reuse=tf.AUTO_REUSE, activation=None, name='hidden_vernieroffset')
+
+        logits_vernierlabels = tf.nn.relu(hidden_vernieroffset, name='logits_vernierlabels')
+        xent_vernierlabels = tf.losses.softmax_cross_entropy(T_vernierlabels, logits_vernierlabels)
+
+        pred_vernierlabels = tf.argmax(logits_vernierlabels, axis=1, name='pred_vernierlabels', output_type=tf.int64)
+        correct_vernierlabels = tf.equal(vernierlabels, pred_vernierlabels, name='correct_vernierlabels')
+        accuracy_vernierlabels = tf.reduce_mean(tf.cast(correct_vernierlabels, tf.float32),
+                                                name='accuracy_vernierlabels')
         return pred_vernierlabels, xent_vernierlabels, accuracy_vernierlabels
 
 
