@@ -79,6 +79,7 @@ flags.DEFINE_integer('im_depth', 1, 'number of colour channels')
 flags.DEFINE_list('shape_size', [14, 11, 6], 'size of the shapes')
 flags.DEFINE_integer('bar_width', 1, 'thickness of shape lines')
 flags.DEFINE_integer('offset', 1, 'offset between shapes and vernier offset width')
+flags.DEFINE_boolean('transparent_cuboids', 'False', 'use opaque or transparent cuboids')
 
 # Define which shapes should be used during training and testing.
 # For this, have a look at the corresponding shapes in batchmaker.py

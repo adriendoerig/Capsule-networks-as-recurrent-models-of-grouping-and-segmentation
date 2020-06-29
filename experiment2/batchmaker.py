@@ -16,7 +16,7 @@ from skimage import draw
 #      stim_maker class fn:      #
 ##################################
 class stim_maker_fn:
-    def __init__(self, imSize, shapeSize, barWidth, offset=1):
+    def __init__(self, imSize, shapeSize, barWidth, offset=1, transparent_cuboids=False):
         self.imSize = imSize
 
         # Extra parameters for 3d nature of cuboids
@@ -25,6 +25,7 @@ class stim_maker_fn:
         depthH = int(np.floor((np.sin(45 / 180 * np.pi) * shapeDepth)))
         self.depthW = depthW
         self.depthH = depthH
+        self.transparent_cuboids = transparent_cuboids
 
         # All shape patches are supposed to have the same height
         self.patchHeight = shapeSize[1] + depthH
@@ -174,11 +175,18 @@ class stim_maker_fn:
         row1, col1 = draw.line(0, offset, depthH, offset + depthW)
         row2, col2 = draw.line(height - adjust, offset, height + depthH - adjust, offset + depthW)
         row3, col3 = draw.line(0, width + offset - adjust, depthH, width + depthW + offset - adjust)
-        row4, col4 = draw.line(height - adjust, width + offset - adjust, height + depthH - adjust,
-                               width + depthW + offset - adjust)
+        
         patch[row1, col1] = 1
         patch[row2, col2] = 1
         patch[row3, col3] = 1
+        
+        if self.transparent_cuboids:
+            patch[height - adjust:height + barW - adjust, offset:offset + width] = 1
+            patch[0:height, offset + width:offset + width + barW] = 1
+            row4, col4 = draw.line(height - adjust, width + offset - adjust, height + depthH - adjust,
+                                   width + depthW + offset - adjust)
+            patch[row4, col4] = 1
+            
         return patch
 
     def drawCuboidsL(self, offset):
@@ -264,6 +272,21 @@ class stim_maker_fn:
         patch[row1, col1] = 1
         patch[row2, col2] = 1
         patch[row3, col3] = 1
+        
+        if self.transparent_cuboids:
+            rnd1 = np.random.randint(0, patchHeight - barW)
+            rnd2 = np.random.randint(offset, patchWidth - offset - width)
+            patch[rnd1:rnd1 + barW, rnd2:rnd2 + width] = 1
+            
+            rnd1 = np.random.randint(0, patchHeight - height)
+            rnd2 = np.random.randint(offset, patchWidth - offset - barW)
+            patch[rnd1:rnd1 + height, rnd2:rnd2 + barW] = 1
+            
+            rnd1 = np.random.randint(0, patchHeight - depthH)
+            rnd2 = np.random.randint(offset, patchWidth - offset - depthW)
+            row4, col4 = draw.line(rnd1, rnd2, rnd1 + depthH, rnd2 + depthW)
+            patch[row4, col4] = 1
+        
         return patch
 
     def drawShuffledCuboidsL(self, offset=0):
