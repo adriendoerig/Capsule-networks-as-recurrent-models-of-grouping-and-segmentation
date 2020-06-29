@@ -1,9 +1,8 @@
+# -*- coding: utf-8 -*-
 """
-Capsule Networks as Recurrent Models of Grouping and Segmentation
-
 Experiment 2: The role of recurrent processing
 
-Parameters file used to get the data presented in our paper
+Exemplary parameters file used to get the data presented in our paper
 @author: Lynn Schmittwilken
 """
 
@@ -99,8 +98,8 @@ flags.DEFINE_list('test_configs', [test_configs], 'pool of shapes (see batchmake
 ###########################
 #    Data augmentation    #
 ###########################
-flags.DEFINE_list('train_noise', [0.02, 0.04], 'amount of added random Gaussian noise')
-flags.DEFINE_list('test_noise', [0.14, 0.16], 'amount of added random Gaussian noise')
+flags.DEFINE_list('train_noise', [0.0, 0.02], 'amount of added random Gaussian noise')
+flags.DEFINE_list('test_noise', [0.1, 0.12], 'amount of added random Gaussian noise')
 flags.DEFINE_list('clip_values', [0., 1.], 'min and max pixel value for every image')
 flags.DEFINE_boolean('allow_contrast_augmentation', True, 'augment by changing contrast and brightness')
 flags.DEFINE_float('delta_brightness', 0.1, 'factor to adjust brightness (+/-), must be non-negative')
@@ -123,8 +122,8 @@ stride3 = 2
 
 # Calculate the output dimensions of the last convolutional layer in order to
 # calculate the total number of primary capsules:
-dim1 = int(np.ceil((((((im_size[0] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
-dim2 = int(np.ceil((((((im_size[1] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
+dim1 = int(np.round((((((im_size[0] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
+dim2 = int(np.round((((((im_size[1] - kernel1+1) / stride1) - kernel2+1) / stride2) - kernel3+1) / stride3))
 
 conv1_params = {'filters': caps1_nmaps*caps1_ndims, 'kernel_size': kernel1, 'strides': stride1, 'padding': 'valid'}
 conv2_params = {'filters': caps1_nmaps*caps1_ndims, 'kernel_size': kernel2, 'strides': stride2, 'padding': 'valid'}
@@ -139,7 +138,7 @@ flags.DEFINE_integer('caps1_ndims', caps1_ndims, 'primary caps, number of dims')
 
 # Output caps:
 flags.DEFINE_integer('caps2_ncaps', len(shape_types), 'second caps layer, number of caps')
-flags.DEFINE_integer('caps2_ndims', 7, 'second caps layer, number of dims')
+flags.DEFINE_integer('caps2_ndims', 3, 'second caps layer, number of dims')
 
 
 # Decoder reconstruction:
@@ -155,10 +154,10 @@ flags.DEFINE_integer('n_output', im_size[0]*im_size[1], 'output size of the deco
 # For training
 flags.DEFINE_integer('batch_size', 48, 'batch size')
 flags.DEFINE_float('learning_rate', 0.0004, 'chosen learning rate for training')
-flags.DEFINE_float('learning_rate_decay_steps', 350, 'decay for cosine decay restart')
+flags.DEFINE_float('learning_rate_decay_steps', 500, 'decay for cosine decay restart')
 
 flags.DEFINE_integer('n_epochs', None, 'number of epochs, if None allow for indifinite readings')
-flags.DEFINE_integer('n_steps', 3500, 'number of steps')
+flags.DEFINE_integer('n_steps', 4500, 'number of steps')
 flags.DEFINE_integer('n_rounds', 1, 'number of evaluations; full training steps is equal to n_steps times this number')
 flags.DEFINE_integer('n_iterations', 50, 'number of trained networks')
 
@@ -176,12 +175,36 @@ flags.DEFINE_float('init_sigma', 0.01, 'stddev for W initializer')
 ###########################
 flags.DEFINE_boolean('decode_reconstruction', True, 'decode the reconstruction and use reconstruction loss')
 
+flags.DEFINE_boolean('decode_nshapes', False, 'decode the number of shapes and use nshapes loss')
+nshapes_loss = 'xentropy'
+flags.DEFINE_string('nshapes_loss', nshapes_loss, 'currently either xentropy or squared_diff')
+
+flags.DEFINE_boolean('decode_location', False, 'decode the shapes locations and use location loss')
+location_loss = 'xentropy'
+flags.DEFINE_string('location_loss', location_loss, 'currently either xentropy or squared_diff')
+
 
 # Control magnitude of losses
 flags.DEFINE_float('alpha_vernieroffset', 1., 'alpha for vernieroffset loss')
 flags.DEFINE_float('alpha_margin', 0.5, 'alpha for margin loss')
 flags.DEFINE_float('alpha_shape_1_reconstruction', 0.0005, 'alpha for reconstruction loss for vernier image (reduce_sum)')
 flags.DEFINE_float('alpha_shape_2_reconstruction', 0.0001, 'alpha for reconstruction loss for shape image (reduce_sum)')
+
+if nshapes_loss=='xentropy':
+    flags.DEFINE_float('alpha_nshapes', 0.4, 'alpha for nshapes loss')
+elif nshapes_loss=='squared_diff':
+    flags.DEFINE_float('alpha_nshapes', 0.002, 'alpha for nshapes loss')
+
+if location_loss=='xentropy':
+    flags.DEFINE_float('alpha_x_shape_1_loss', 0.1, 'alpha for loss of x coordinate of shape')
+    flags.DEFINE_float('alpha_y_shape_1_loss', 0.1, 'alpha for loss of y coordinate of shape')
+    flags.DEFINE_float('alpha_x_shape_2_loss', 0.1, 'alpha for loss of x coordinate of vernier')
+    flags.DEFINE_float('alpha_y_shape_2_loss', 0.1, 'alpha for loss of y coordinate of vernier')
+elif location_loss=='squared_diff':
+    flags.DEFINE_float('alpha_x_shape_1_loss', 0.000004, 'alpha for loss of x coordinate of shape')
+    flags.DEFINE_float('alpha_y_shape_1_loss', 0.00005, 'alpha for loss of y coordinate of shape')
+    flags.DEFINE_float('alpha_x_shape_2_loss', 0.000004, 'alpha for loss of x coordinate of vernier')
+    flags.DEFINE_float('alpha_y_shape_2_loss', 0.00005, 'alpha for loss of y coordinate of vernier')
 
 
 # Margin loss extras
@@ -193,10 +216,13 @@ flags.DEFINE_float('lambda_val', 0.5, 'down weight of the loss for absent digit 
 ###########################
 #     Regularization       #
 ###########################
+
 flags.DEFINE_boolean('dropout', False, 'use dropout after conv layers 1&2')
 flags.DEFINE_boolean('batch_norm_conv', False, 'use batch normalization between every conv layer')
 flags.DEFINE_boolean('batch_norm_reconstruction', False, 'use batch normalization for the reconstruction decoder layers')
 flags.DEFINE_boolean('batch_norm_vernieroffset', False, 'use batch normalization for the vernieroffset loss layer')
+flags.DEFINE_boolean('batch_norm_nshapes', False, 'use batch normalization for the nshapes loss layer')
+flags.DEFINE_boolean('batch_norm_location', False, 'use batch normalization for the location loss layer')
 
 
 parameters = tf.app.flags.FLAGS

@@ -1,12 +1,9 @@
 """
 Capsule Networks as Recurrent Models of Grouping and Segmentation
-
 Experiment 2: The role of recurrent processing
-
 This script defines all stimuli of the training and test datasets.
 It involves all basic shapes used in the paper (verniers, lines, cuboids,
 shuffled cuboids) and an additional category which was not used (rectancles).
-
 @author: Lynn Schmittwilken
 """
 
@@ -21,14 +18,14 @@ from skimage import draw
 class stim_maker_fn:
     def __init__(self, imSize, shapeSize, barWidth, offset=1):
         self.imSize = imSize
-        
+
         # Extra parameters for 3d nature of cuboids
         shapeDepth = shapeSize[2]
         depthW = int(np.floor((np.tan(45 / 180 * np.pi) * shapeDepth)))
         depthH = int(np.floor((np.sin(45 / 180 * np.pi) * shapeDepth)))
         self.depthW = depthW
         self.depthH = depthH
-        
+
         # All shape patches are supposed to have the same height
         self.patchHeight = shapeSize[1] + depthH
         self.shapeWidth = shapeSize[0]
@@ -36,18 +33,18 @@ class stim_maker_fn:
         self.barWidth = barWidth         # Line width, for small images only use =1
         self.vernierOffsetHeight = 1     # Vernier offset vertically (fixed)
         self.offset = offset             # offset used between all shapes (0 or 1)
-        
+
         # Additional fixed parameters for the experiment 2:
         # Fixed number of shapes in the input image (except lines):
         self.shape_repetitions = 2
 
         # Shapes must face one another (relevant for cuboids):
         self.face_each_other = 1
-        
+
         # Lines are repeated more often, to make sure that the network does not
         # learn too basic differences between the shape types (e.g. number of pixels):
-        self.line_repetitions = [2, 4, 6, 8]
-        
+        self.line_repetitions = [2, 4, 6]
+
         # Fix maximal offset between the stimuli
         self.max_offset_line = self.offset * 6
         self.max_offset_stim = self.offset * 6
@@ -58,14 +55,14 @@ class stim_maker_fn:
     def drawVernier(self, offset, offset_direction):
         '''
         Draw a vernier stimulus within a patch of size [patchHeight, vernier width].
-        
+
         Parameters
         ----------
         offset: int
                 vernier offset
         offset_direction: int
                           offset_direction: 0=r, 1=l
-        
+
         Returns
         -------
         patch: 2d array
@@ -91,12 +88,12 @@ class stim_maker_fn:
     def drawLines(self, offset=0):
         '''
         Draw a line within a patch of size [patchHeight, line width + offset*2].
-        
+
         Parameters
         ----------
         offset: int
                 offset added to patch width (default: 0)
-        
+
         Returns
         -------
         patch: 2d array
@@ -115,12 +112,12 @@ class stim_maker_fn:
         '''
         Draw a rectangle within a patch of size [patchHeight, rectangle width
         + offset*2].
-        
+
         Parameters
         ----------
         offset: int
                 offset added to patch width (default: 0)
-        
+
         Returns
         -------
         patch: 2d array
@@ -143,12 +140,12 @@ class stim_maker_fn:
         '''
         Draw a cuboid facing right within a patch of size [patchHeight, cuboid
         width + offset*2].
-        
+
         Parameters
         ----------
         offset: int
                 offset added to patch width (default: 0)
-        
+
         Returns
         -------
         patch: 2d array
@@ -157,7 +154,7 @@ class stim_maker_fn:
 
         # To make sure that the drawing function is not out of borders
         adjust = 1
-        
+
         patchHeight = self.patchHeight
         height = self.shapeHeight
         width = self.shapeWidth
@@ -172,9 +169,7 @@ class stim_maker_fn:
         patch[depthH + height - barW:depthH + height, depthW + offset:depthW + offset + width] = 1
 
         patch[0:barW, offset:offset + width] = 1
-        patch[height - adjust:height + barW - adjust, offset:offset + width] = 1
         patch[0:height, offset:offset + barW] = 1
-        patch[0:height, offset + width:offset + width + barW] = 1
 
         row1, col1 = draw.line(0, offset, depthH, offset + depthW)
         row2, col2 = draw.line(height - adjust, offset, height + depthH - adjust, offset + depthW)
@@ -184,19 +179,18 @@ class stim_maker_fn:
         patch[row1, col1] = 1
         patch[row2, col2] = 1
         patch[row3, col3] = 1
-        patch[row4, col4] = 1
         return patch
 
     def drawCuboidsL(self, offset):
         '''
         Draw a cuboid facing left within a patch of size [patchHeight, cuboid
         width + offset*2].
-        
+
         Parameters
         ----------
         offset: int
                 offset added to patch width (default: 0)
-        
+
         Returns
         -------
         patch: 2d array
@@ -210,12 +204,12 @@ class stim_maker_fn:
         '''
         Draw a shuffled cuboid facing right within a patch of size
         [patchHeight, cuboid width + offset*2].
-        
+
         Parameters
         ----------
         offset: int
                 offset added to patch width (default: 0)
-        
+
         Returns
         -------
         patch: 2d array
@@ -230,10 +224,10 @@ class stim_maker_fn:
         patchWidth = width + depthW + 2 * offset
 
         patch = np.zeros([patchHeight, patchWidth], dtype=np.float32)
-        
+
         # The line close to the vernier should always stay the same:
         patch[depthH:depthH + height, depthW + offset + width - barW:depthW + offset + width] = 1
-        
+
         # All others should be random
         rnd1 = np.random.randint(0, patchHeight - height)
         rnd2 = np.random.randint(offset, patchWidth - offset - barW)
@@ -251,14 +245,6 @@ class stim_maker_fn:
         rnd2 = np.random.randint(offset, patchWidth - offset - width)
         patch[rnd1:rnd1 + barW, rnd2:rnd2 + width] = 1
 
-        rnd1 = np.random.randint(0, patchHeight - barW)
-        rnd2 = np.random.randint(offset, patchWidth - offset - width)
-        patch[rnd1:rnd1 + barW, rnd2:rnd2 + width] = 1
-
-        rnd1 = np.random.randint(0, patchHeight - height)
-        rnd2 = np.random.randint(offset, patchWidth - offset - barW)
-        patch[rnd1:rnd1 + height, rnd2:rnd2 + barW] = 1
-
         rnd1 = np.random.randint(0, patchHeight - height)
         rnd2 = np.random.randint(offset, patchWidth - offset - barW)
         patch[rnd1:rnd1 + height, rnd2:rnd2 + barW] = 1
@@ -275,26 +261,21 @@ class stim_maker_fn:
         rnd2 = np.random.randint(offset, patchWidth - offset - depthW)
         row3, col3 = draw.line(rnd1, rnd2, rnd1 + depthH, rnd2 + depthW)
 
-        rnd1 = np.random.randint(0, patchHeight - depthH)
-        rnd2 = np.random.randint(offset, patchWidth - offset - depthW)
-        row4, col4 = draw.line(rnd1, rnd2, rnd1 + depthH, rnd2 + depthW)
-
         patch[row1, col1] = 1
         patch[row2, col2] = 1
         patch[row3, col3] = 1
-        patch[row4, col4] = 1
         return patch
 
     def drawShuffledCuboidsL(self, offset=0):
         '''
         Draw a shuffled cuboid facing left within a patch of size
         [patchHeight, cuboid width + offset*2].
-        
+
         Parameters
         ----------
         offset: int
                 offset added to patch width (default: 0)
-        
+
         Returns
         -------
         patch: 2d array
@@ -310,7 +291,7 @@ class stim_maker_fn:
         For this, it should be defined here how each shape looks like.
         Importantly, the shapeID needs to range from 0 to the selected number of
         different shapes.
-        
+
         Parameters
         ----------
         shapeID: int
@@ -320,7 +301,7 @@ class stim_maker_fn:
         offset_direction: int
                           if the chosen shape is a vernier, you can choose the
                           offset direction (0=r, 1=l)
-        
+
         Returns
         -------
         patch: 2d array
@@ -346,7 +327,7 @@ class stim_maker_fn:
     def plotAllStim(self, shape_types, offset):
         '''
         Function to visualize the chosen shape_types in a single plot.
-        
+
         Parameters
         ----------
         shape_types: list of ints
@@ -364,9 +345,9 @@ class stim_maker_fn:
             ID = shape_types[i]
             patch = self.drawShape(ID, offset)
             full_width += np.size(patch, 1)
-        
+
         image = np.zeros([self.patchHeight, full_width], dtype=np.float32)
-        
+
         for i in range(len(shape_types)):
             ID = shape_types[i]
             patch = self.drawShape(ID, offset)
@@ -381,7 +362,7 @@ class stim_maker_fn:
                       reduce_df=False):
         '''
         Create one batch of the test dataset for the condition chosen with stim_idx.
-        
+
         Parameters
         ----------
         crowding_config: list
@@ -403,7 +384,7 @@ class stim_maker_fn:
                    Like this, it gets prevented that big stimulus groups are detected
                    more easily just because their positioning on the x-axis is less
                    variable
-        
+
         Returns
         -------
         vernier_images: 4d array
@@ -541,12 +522,12 @@ class stim_maker_fn:
         '''
         Create one batch of the training dataset with each two groups of
         shape_type
-        
+
         Parameters
         ----------
         shape_types: list or int
                      Either list including all possible shapeIDs of which one ID
-                     is randomly chosen to create the stimulus, or just a single 
+                     is randomly chosen to create the stimulus, or just a single
                      shapeID that is used to create the stimulus.
         batch_size: int
                     chosen batch size
@@ -564,7 +545,7 @@ class stim_maker_fn:
                    Like this, it gets prevented that big stimulus groups are detected
                    more easily just because their positioning on the x-axis is less
                    variable
-        
+
         Returns
         -------
         shape_1_images: 4d array
@@ -589,11 +570,11 @@ class stim_maker_fn:
         shape_repetitions = self.shape_repetitions
         face_each_other = self.face_each_other
         line_reps = self.line_repetitions
-        
+
         # Set the max random offset between the stimuli:
         max_offset_line = self.max_offset_line
         max_offset_stim = self.max_offset_stim
-        
+
         # The offset is set to zero, since we introduce a rd_offset afterwards
         offset = 0
         maxPatchWidth = self.shapeWidth + self.depthW + offset * 2
@@ -668,7 +649,7 @@ class stim_maker_fn:
             row_shape_1 = np.random.randint(0, imSize[0] - patchHeight)
             if reduce_df:
                 # We want to make the degrees of freedom for position on the x axis fair.
-                # For this condition, we have to reduce the image size depending on 
+                # For this condition, we have to reduce the image size depending on
                 # the actual patch width
                 if idx_n_shapes_1 == 0:
                     imSize_adapted = imSize[1] - maxPatchWidth * shape_repetitions + shape1patch_width * selected_repetitions_1 - 1
