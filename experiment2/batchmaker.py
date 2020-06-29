@@ -44,7 +44,10 @@ class stim_maker_fn:
 
         # Lines are repeated more often, to make sure that the network does not
         # learn too basic differences between the shape types (e.g. number of pixels):
-        self.line_repetitions = [2, 4, 6]
+        if self.transparent_cuboids:
+            self.line_repetitions = [2, 4, 6, 8]
+        else:
+            self.line_repetitions = [2, 4, 6]
 
         # Fix maximal offset between the stimuli
         self.max_offset_line = self.offset * 6
